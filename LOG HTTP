@@ -1,0 +1,83 @@
+Script yang digunakan untuk mengirimkan log serangan HTTP ke PC SDN
+
+import time
+import requests
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# Konfigurasi Floodlight Controller
+FLOODLIGHT_API_URL = "http://192.168.24.2:8080/wm/staticflowpusher/json"
+MONITOR_LOG_PATH = "/var/log/auth.log"  # Lokasi log yang akan dipantau
+
+# Fungsi untuk mendeteksi HTTP Flood berdasarkan log
+def detect_http_flood(log_line):
+    if "[1:1000012:1] DDoS HTTP Flood Detected" in log_line:
+        return True
+    return False
+
+# Fungsi untuk mempush flow rule HTTP Flood ke Floodlight
+def push_http_flood_flow_to_floodlight():
+    # Flow rule untuk mengalihkan HTTP Flood ke honeypot
+    flow_rule_redirect_http = {
+        "switch": "00:00:5e:4a:1e:07:91:44",  # Ganti dengan ID switch yang sesuai
+        "name": "redirect_http_to_honeypot",
+        "priority": "60000",
+        "eth_type": "0x0800",  # IPv4
+        "ip_proto": "6",  # TCP
+        "tcp_dst": "80",  # Port HTTP
+        "actions": "output=4"  # Mengalihkan ke port honeypot
+    }
+
+    # Flow rule untuk mengizinkan IP 192.168.42.2 mengakses port 5
+    flow_rule_allow_ip = {
+        "switch": "00:00:5e:4a:1e:07:91:44",  # Ganti dengan ID switch yang sesuai
+        "name": "allow_http_for_192.168.42.2",
+        "priority": "60001",
+        "eth_type": "0x0800",  # IPv4
+        "ip_proto": "6",  # TCP
+        "tcp_dst": "80",  # Port HTTP
+        "ipv4_src": "192.168.42.2",  # IP yang diizinkan
+        "actions": "output=5"  # Arahkan ke port 5
+    }
+
+    try:
+        # Kirim flow rule untuk mengalihkan HTTP Flood ke honeypot
+        response_redirect = requests.post(FLOODLIGHT_API_URL, json=flow_rule_redirect_http)
+        if response_redirect.status_code == 200:
+            print("Flow rule HTTP Flood berhasil dipush ke Floodlight.")
+        else:
+            print(f"Gagal push flow rule untuk HTTP Flood: {response_redirect.status_code}")
+
+        # Kirim flow rule untuk mengizinkan IP 192.168.42.2
+        response_allow_ip = requests.post(FLOODLIGHT_API_URL, json=flow_rule_allow_ip)
+        if response_allow_ip.status_code == 200:
+            print("Flow rule untuk IP 192.168.42.2 berhasil dipush ke Floodlight.")
+        else:
+            print(f"Gagal push flow rule untuk IP 192.168.42.2: {response_allow_ip.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error dalam mengirimkan permintaan: {e}")
+
+# Monitor log file untuk HTTP Flood
+class LogHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path == MONITOR_LOG_PATH:
+            with open(event.src_path, "r") as log_file:
+                log_lines = log_file.readlines()
+                for line in log_lines:
+                    if detect_http_flood(line):
+                        print("HTTP Flood terdeteksi! Mengirimkan flow rule...")
+                        push_http_flood_flow_to_floodlight()
+
+# Setup observer untuk memantau perubahan pada log
+if __name__ == "__main__":
+    event_handler = LogHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path="/var/log", recursive=False)
+    observer.start()
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
