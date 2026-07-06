@@ -1,0 +1,52 @@
+sudo apt update
+sudo apt upgrade
+
+sudo apt install build-essential python-dev
+sudo apt install openjdk-8-jdk maven ant git
+sudo apt install docker.io
+
+java -version
+sudo update-alternatives --config java (jika java bukan versi 8)
+
+
+sudo git clone https://github.com/floodlight/floodlight.git
+
+cd floodlight
+
+sudo ant clean && sudo ant
+
+
+Download file dari https://mvnrepository.com/ dan tempatkan di ~/floodlight/lib
+
+libthrift <version>
+netty-all <version>
+
+sudo rm ~/floodlight/lib/libthrift-0.14.1.jar
+sudo rm ~/floodlight/lib/netty-all-4.0.31.Final.jar
+
+sudo cp ~/downloads/libthrift-0.14.1.jar ~/floodlight/lib
+sudo cp ~/downloads/netty-all-4.1.66.Final.jar ~/floodlight/lib
+
+
+Dalam ~/floodlight/
+sudo gedit build.xml
+ganti versi libthrift dan netty sesuai versi yang sudah di download
+
+cd ~/floodlight
+sudo ant clean
+sudo ant
+
+sudo git pull origin master
+sudo git submodule init
+sudo git submodule update --recursive
+sudo git submodule update
+
+sudo ant clean
+sudo ant
+
+java -jar target/floodlight.jar
+
+
+
+launch
+http:localhost:8080/ui/pages/index.html
