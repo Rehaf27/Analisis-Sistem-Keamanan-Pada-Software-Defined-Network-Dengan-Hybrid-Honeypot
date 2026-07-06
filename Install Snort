@@ -1,0 +1,73 @@
+sudo apt update
+sudo apt upgrade
+
+sudo apt install build-essential libpcap-dev libpcre3-dev libnet1-dev zlib1g-dev luajit hwloc libdnet-dev libdumbnet-dev bison flex liblzma-dev openssl libssl-dev pkg-config libhwloc-dev cmake cpputest libsqlite3-dev uuid-dev libcmocka-dev libnetfilter-queue-dev libmnl-dev autotools-dev libluajit-5.1-dev libunwind-dev libfl-dev -y
+
+sudo apt install snort
+
+masukkan IP network
+
+CEK
+snort --version
+
+
+cd /etc/snort
+ls
+sudo nano snort.conf
+
+ganti ipvar HOME_NET any --> IP Network pake /berapa
+
+ctrl + o enter
+
+sudo snort -T -i enp0s3 -c /etc/snort/snort.conf
+
+
+
+
+MENAMBAHKAN RULES
+cd rules
+sudo nano local.rules
+
+alert icmp any any -> $HOME_NET any (msg:"ICMP DETECTED"; SID:1000001; rev:1;)
+
+
+sudo snort -A console -c /etc/snort/snort.conf -i enp0s3
+
+
+
+
+
+
+Cara agar bisa NIDS
+dari OpenVSwitch lakukan port mirroring terhadap eth0
+
+# buat bridge br0 (biasanya udah default ada)
+ovs-vsctl add-br br0
+
+# tambahkan port ke bridge (biasanya udah default ada)
+ovs-vsctl add-port br0 eth0  # Replace eth0 with your actual port
+ovs-vsctl add-port br0 eth5  # Port to receive mirrored traffic
+
+# Create a mirror for port eth0 to eth5
+ovs-vsctl -- --id=@eth0 get port eth0 \
+            -- --id=@eth5 get port eth5 \
+            -- --id=@m create Mirror name=snortmirror \
+            select-src-port=@eth0 output-port=@eth5 \
+            -- set bridge br0 mirrors=@m
+
+#eth0 koneksi dari public dan eth5 koneksi ke vm snort (bisa berbeda beda tergantung topologi masing-masing) 
+
+
+cek apakah sudah ter-mirror
+ovs-vsctl list Bridge br0
+
+Jika sudah maka hidupkan snort dan coba serang dari IP Public ke Private
+
+
+sudo snort -T -i enp0s3 -c /etc/snort/snort.conf
+sudo snort -A console -c /etc/snort/snort.conf -i enp0s3
+
+untuk menghapus port mirroring yang sudah ada
+ovs-vsctl list mirror
+ovs-vsctl remove bridge <nama-bridge> mirrors <uuid>
+ovs-vsctl list mirror
