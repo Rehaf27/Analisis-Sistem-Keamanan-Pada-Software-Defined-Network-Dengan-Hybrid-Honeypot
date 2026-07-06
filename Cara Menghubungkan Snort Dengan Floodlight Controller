@@ -1,0 +1,52 @@
+DI PC SNORT
+
+install snort
+
+setting di snort.conf:
+HOME_NET 192.168.24.0/28
+EXTERNAL_NET any
+
+sudo apt install rsyslog -y
+
+tambahkan output syslog di snort.conf
+
+sudo nano /etc/snort/snort.conf
+ctrl + w output alert (step 6)
+enabled output alert_syslog: LOG_AUTH LOG_ALERT (hilangkan "#")
+ctrl + o
+ctrl + x
+
+lalu buka
+
+sudo nano /etc/rsyslog.conf
+scroll paling bawah dan tambahkan *.* @192.168.24.2:514 (IP masing-masing ya. portnya harus 514)
+ctrl + o
+ctrl + x
+sudo systemctl restart rsyslog
+
+
+
+DI PC FLOODLIGHT CONTROLLER
+
+sudo nano /etc/rsyslog.conf
+
+hapus "#" di :
+module(load="imudp")
+input(type="imudp" port="514")
+
+ctrl + o
+ctrl + x
+
+sudo systemctl restart rsyslog
+
+
+
+Kembali ke PC SNORT
+
+nc -zv -u 192.168.24.2 514
+
+jika succeded maka jos
+
+pantau log yang dikirimkan oleh snort ke controller:
+tail -f /var/log/auth.log
+tail -f /var/log/syslog
