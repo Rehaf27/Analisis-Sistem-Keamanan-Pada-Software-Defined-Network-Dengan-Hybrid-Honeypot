@@ -1,0 +1,14 @@
+Agar OVS terkoneksi ke controller IP antara OVS dan Controller harus 1 network
+-Tambahkan IP pada OVS : misal IP OVS 192.168.24.7/28
+
+Perintah IP add di OVS
+ip addr add 192.168.24.7/28 dev br0
+
+PERINTAH IP add di PC Controller
+sudo ip addr add 192.168.24.2/28 dev enp0s3
+
+setup ip controller di OVS
+ovs-vsctl set-controller br0 "tcp:192.168.24.2:6653"
+
+melihat list controller
+ovs-vsctl list controller
