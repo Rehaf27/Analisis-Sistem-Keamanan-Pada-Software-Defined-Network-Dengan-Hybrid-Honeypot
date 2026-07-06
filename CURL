@@ -1,0 +1,68 @@
+CURL digunakan untuk melakukan pengecekan apakah flow rules sudah berhasil di push di SDN
+
+ICMP
+curl -X POST -d '{
+  "switch": "00:00:5e:4a:1e:07:91:44",
+  "name": "redirect_icmp_to_honeypot",
+  "priority": "60000",
+  "eth_type": "0x0800",
+  "ip_proto": "1",
+  "actions": "output=4"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+SYN
+curl -X POST -d '{
+  "switch": "00:00:5e:4a:1e:07:91:44",
+  "name": "redirect_syn_to_honeypot",
+  "priority": "60000",
+  "eth_type": "0x0800",
+  "ip_proto": "6", 
+  "tcp_flags": "0x02", 
+  "actions": "output=4"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+HTTP
+curl -X POST -d '{
+  "switch": "00:00:5e:4a:1e:07:91:44",
+  "name": "redirect_http_to_honeypot",
+  "priority": "60000",
+  "eth_type": "0x0800",
+  "ip_proto": "6",
+  "tcp_dst": "80",
+  "actions": "output=4"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+SSH
+curl -X POST -d '{
+  "switch": "00:00:5e:4a:1e:07:91:44",
+  "name": "redirect_ssh_to_honeypot",
+  "priority": "60000",
+  "eth_type": "0x0800",
+  "ip_proto": "6",
+  "tcp_dst": "22",
+  "actions": "output=3"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+
+
+curl -X POST -d '{
+  "switch": "00:00:5e:4a:1e:07:91:44",
+  "name": "allow_ssh_from_valid_client",
+  "priority": "60001",
+  "eth_type": "0x0800",
+  "ip_proto": "6",
+  "tcp_dst": "22",
+  "ipv4_src": "192.168.42.2",
+  "actions": "output=5"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+
+CEK FLOW RULES
+curl http://192.168.24.2:8080/wm/core/switch/00:00:5e:4a:1e:07:91:44/flow/json
+
+HAPUS FLOW RULES
+curl -X DELETE -d '{
+  "name": "redirect_icmp_to_honeypot"
+}' http://192.168.24.2:8080/wm/staticflowpusher/json
+
+curl -X GET http://192.168.24.2:8080/wm/staticflowpusher/list/all/json
