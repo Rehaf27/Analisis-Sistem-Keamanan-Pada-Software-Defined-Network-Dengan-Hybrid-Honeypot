@@ -1,0 +1,90 @@
+Script pendeteksi log serangan SSH lalu di kirimkan ke PC SDN
+
+import time
+import requests
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
+# Konfigurasi Floodlight Controller
+FLOODLIGHT_API_URL = "http://192.168.24.2:8080/wm/staticflowpusher/json"
+MONITOR_LOG_PATH = "/var/log/auth.log"  # Lokasi log yang akan dipantau
+
+# Fungsi untuk mendeteksi SSH Brute Force Attack
+def detect_ssh_brute_force(log_line):
+    if "SSH Brute Force Attack Detected" in log_line:
+        return True
+    return False
+
+# Fungsi untuk mempush dua flow rule ke Floodlight
+def push_ssh_flow_to_floodlight():
+    # Flow rule untuk IP 192.168.42.2 (Izinkan akses SSH)
+    flow_rule_allow_ip = {
+        "switch": "00:00:5e:4a:1e:07:91:44",  # Ganti dengan MAC address switch yang sesuai
+        "name": "allow_ssh_for_192.168.42.2",
+        "priority": "60000",  # Prioritas lebih rendah daripada yang digunakan untuk serangan
+        "eth_type": "0x0800",  # Ethernet type untuk IPv4
+        "ip_proto": "6",  # Protokol TCP
+        "tcp_dst": "22",  # Port SSH (22)
+        "ipv4_src": "192.168.42.2",  # IP yang diizinkan
+        "actions": "output=5"  # Arahkan ke port 5 (server utama)
+    }
+
+    # Flow rule untuk mengalihkan serangan SSH Brute Force ke honeypot
+    flow_rule_redirect_bruteforce = {
+        "switch": "00:00:5e:4a:1e:07:91:44",  # Ganti dengan MAC address switch yang sesuai
+        "name": "redirect_ssh_to_honeypot",
+        "priority": "60000",  # Prioritas lebih tinggi untuk mendeteksi serangan
+        "eth_type": "0x0800",  # Ethernet type untuk IPv4
+        "ip_proto": "6",  # Protokol TCP
+        "tcp_dst": "22",  # Port SSH (22)
+        "actions": "output=3"  # Arahkan ke port 3 (honeypot)
+    }
+
+    try:
+        # Kirim flow rule untuk mengizinkan IP 192.168.42.2 mengakses SSH
+        response_allow_ip = requests.post(FLOODLIGHT_API_URL, json=flow_rule_allow_ip)
+        if response_allow_ip.status_code == 200:
+            print(f"Flow rule untuk IP 192.168.42.2 berhasil didorong ke Floodlight!")
+        else:
+            print(f"Error saat mengirim flow rule untuk IP 192.168.42.2: {response_allow_ip.status_code}")
+
+        # Kirim flow rule untuk mengarahkan trafik brute force ke honeypot
+        response_redirect = requests.post(FLOODLIGHT_API_URL, json=flow_rule_redirect_bruteforce)
+        if response_redirect.status_code == 200:
+            print("Flow rule SSH Brute Force berhasil didorong ke Floodlight!")
+        else:
+            print(f"Error saat mengirim flow rule untuk serangan SSH: {response_redirect.status_code}")
+
+    except Exception as e:
+        print(f"Error saat mengirim request ke Floodlight: {e}")
+
+# Kelas untuk memantau file log
+class LogFileHandler(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.src_path == MONITOR_LOG_PATH:
+            with open(MONITOR_LOG_PATH, "r") as log_file:
+                lines = log_file.readlines()
+                last_line = lines[-1].strip()
+                
+                if detect_ssh_brute_force(last_line):
+                    print("Serangan SSH Brute Force terdeteksi!")
+                    push_ssh_flow_to_floodlight()
+
+# Setup pemantauan log
+def start_monitoring():
+    event_handler = LogFileHandler()
+    observer = Observer()
+    observer.schedule(event_handler, MONITOR_LOG_PATH, recursive=False)
+    observer.start()
+    print(f"Memulai pemantauan log pada {MONITOR_LOG_PATH}...")
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+
+# Jalankan pemantauan
+if __name__ == "__main__":
+    start_monitoring()
