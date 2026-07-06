@@ -1,0 +1,117 @@
+DALAM root /home/deb#
+
+sudo su
+
+sudo apt update && sudo apt upgrade -y
+
+sudo apt install python3-virtualenv libssl-dev libffi-dev build-essential libpython3-dev python3-minimal authbind virtualenv
+
+sudo adduser --disabled-password cowrie
+Muncul kolom isikan Full name, Room number, work phone, dll
+
+sudo apt install git
+
+sudo git clone http://github.com/cowrie/cowrie
+ls
+cd cowrie
+
+
+
+
+DALAM root  /home/deb/cowrie#
+
+ls
+pwd
+virtualenv --python=python3 cowrie-env
+
+source cowrie-env/bin/activate
+
+
+
+
+
+DALAM ENVIRONMENT Cowrie root  /home/deb/cowrie#
+pip install --upgrade pip
+
+ls
+pip install --upgrade -r requirements.txt
+
+Keluar dari ROOT!
+
+exit
+cd cowrie
+virtualenv --python=python3 cowrie-env
+masuk ke root
+sudo su
+
+
+
+DALAM root   /home/deb#
+sudo chmod -R 777 cowrie
+exit
+
+
+
+
+DALAM deb@debian:~/cowries
+virtualenv --python=python3 cowrie-env
+bin/cowrie start
+
+
+
+
+CLOSE
+
+open terminal
+sudo su
+
+DALAM root   /home/deb#
+sudo iptables -t nat -A PREROUTING -p tcp --dport 22 -j REDIRECT --to-port 2222
+sudo iptables -t nat -A PREROUTING -p tcp --dport 23 -j REDIRECT --to-port 2223
+
+apt install authbind
+touch /etc/authbind/byport/22
+sudo chown cowrie:cowrie /etc/authbind/byport/22
+
+sudo chmod 770 /etc/authbind/byport/22
+
+
+EXIT
+cd cowrie
+virtualenv --python=python3 cowrie-env
+bin/cowrie start
+cd /var/
+ls
+cd log/
+ls
+
+
+
+sudo su
+
+
+DALAM root   /home/deb#
+virtualenv --python=python3 cowrie-env
+
+cd cowrie/var/log/cowrie/
+tail cowrie.log
+
+PASTIKAN READY TO ACCEPT SSH CONNECTIONS
+
+
+
+
+
+Jika Error Python 3.9
+
+sudo apt update
+sudo apt install python3.9 python3.9-venv python3.9-dev
+
+cd ~/cowrie
+sudo su
+python3.9 -m venv cowrie-env
+source cowrie-env/bin/activate
+
+pip install -r requirements.txt
+
+bin/cowrie start
